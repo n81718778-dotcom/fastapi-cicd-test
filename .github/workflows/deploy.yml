@@ -1,0 +1,35 @@
+name: Build and Push Docker Image
+
+# 1. Когда запускать? При пуше в ветку main
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    # Даем права на запись в реестр пакетов (GitHub Container Registry)
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # Шаг 1: Копируем код из репозитория на виртуальную машину GitHub
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Шаг 2: Логинимся в GitHub Container Registry (ghcr.io)
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      # Шаг 3: Сборка и отправка образа
+      - name: Build and push Docker image
+        run: |
+          # Приводим логин к нижнему регистру, так как Docker не любит заглавные буквы в именах образов
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/my-fastapi-app:latest
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+          
+          docker build -t $IMAGE_ID .
+          docker push $IMAGE_ID
